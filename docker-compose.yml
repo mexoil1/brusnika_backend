@@ -1,0 +1,21 @@
+version: '1'
+
+volumes:
+  mongo_data:
+
+
+services:
+  brusnika_mongo:
+    container_name: brusnika_mongo
+    image: mongo
+    env_file: .env
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+  brusnika_backend:
+    container_name: brusnika_backend
+    build: .
+    env_file: .env
+    ports:
+      - 80:8000
