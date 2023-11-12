@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from fastapi import APIRouter
 from configs.database import collection
@@ -20,13 +21,16 @@ async def parse_and_upload_to_mongodb(file_path):
             "group": row["Группа"],
             "job_title": row["Должность"],
             "full_name": row["ФИО"],
-            "type_of_work": row["тип работы"]
+            "type_of_work": row["Тип работы"]
         }
         await collection.insert_one(data)
     
 @parse_router.get('/excel')
 async def parse_xlsx():
-    file_path = "your_excel_file.xlsx"
+    current_file_path = os.path.abspath(__file__)
+    current_directory = os.path.dirname(current_file_path)
+    file_name = "data.xlsx"
+    file_path = os.path.join(current_directory, file_name)
     await parse_and_upload_to_mongodb(file_path)
     return {"message": "success"}
 

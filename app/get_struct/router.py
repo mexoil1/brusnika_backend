@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, HTTPException
 from configs.database import collection
 
@@ -11,12 +12,14 @@ tags = ['parser']
 async def get_struct():
     documents = []
     async for document in collection.find({}):
-        documents.append(document)
+        document['_id'] = str(document['_id'])
+
+        clean_document = {key: value if value == value else None for key, value in document.items()}
+        documents.append(clean_document)
     
     if not documents:
-        raise HTTPException(status_code=404, detail="No documents found")
-    
-    # Преобразуем документы в список словарей (или модель данных, если определена)
-    result = [doc for doc in documents]
+        raise HTTPException(status_code=404, detail="Документы не найдены")
 
-    return result
+    json_data = json.dumps(documents, default=str)
+
+    return json_data
