@@ -5,10 +5,11 @@ import numpy as np
 import redis
 
 from configs.database import collection
+from .filters import get_new_filters
 
 get_struct_router = APIRouter(
     prefix='/structure',
-    tags=['parser']
+    tags=['struct']
 )
 
 
@@ -27,49 +28,54 @@ def set_cached_data(redis_client, cache_key, data, expire_time):
     redis_client.setex(cache_key, expire_time, json.dumps(data))
 
 
-@get_struct_router.get('/get', response_model=List[dict])
+@get_struct_router.get('/get', response_model=dict)
 async def get_struct(redis_client: redis.StrictRedis = Depends(get_redis_client),
-                     number_position: Optional[str] = Query(None, title='Номер позиции'),
                      ul: Optional[str] = Query(None, title='ЮЛ'),
                      location: Optional[str] = Query(None, title='Локация'),
-                     subdivision: Optional[str] = Query(None, title='Подразделение'),
+                     subdivision: Optional[str] = Query(
+                         None, title='Подразделение'),
                      department: Optional[str] = Query(None, title='Отдел'),
                      group: Optional[str] = Query(None, title='Группа'),
                      job_title: Optional[str] = Query(None, title='Должность'),
-                     full_name: Optional[str] = Query(None, title='ФИО'),
                      type_of_work: Optional[str] = Query(None, title='Тип работы')):
+    """Получение всех работников"""
     cache_key = 'get_struct_data'
     cached_data = get_cached_data(redis_client, cache_key)
     # if cached_data:
     #     return cached_data
     filters = {
-        'number_position': number_position,
         'ul': ul,
         'location': location,
         'subdivision': subdivision,
         'department': department,
         'group': group,
         'job_title': job_title,
-        'full_name': full_name,
         'type_of_work': type_of_work,
     }
-    filters = {key: value for key, value in filters.items() if value is not None}
-
+    filters = {key: value for key,
+               value in filters.items() if value is not None}
+    # cached_data = get_cached_data(redis_client, cache_key)
     documents = []
-    async for document in collection.find(filters):
-        document['_id'] = str(document['_id'])
-        clean_document = {key: value if value == value else None for key, value in document.items()}
+    async for document in collection.find(filters, projection={'_id': False}):
+        clean_document = {key: value if value ==
+                          value else None for key, value in document.items()}
         documents.append(clean_document)
+    new_filters = await get_new_filters(documents)
 
     if not documents:
         raise HTTPException(status_code=404, detail='Документы не найдены')
 
-    set_cached_data(redis_client, cache_key, documents, 60*15)
-    return documents
+    # set_cached_data(redis_client, cache_key, documents, 60*15)
+    result = {
+        'employees': documents,
+        'new_filters': new_filters,
+    }
+    return result
 
 
 @get_struct_router.get('/locations', response_model=List[str])
 async def get_locations(redis_client: redis.StrictRedis = Depends(get_redis_client)):
+    """Получение сех локаций"""
     cache_key = 'get_locations_data'
     cached_data = get_cached_data(redis_client, cache_key)
     if cached_data:
@@ -88,3 +94,19 @@ async def get_locations(redis_client: redis.StrictRedis = Depends(get_redis_clie
     set_cached_data(redis_client, cache_key, list(locations), 60*15)
 
     return list(locations)
+
+
+@get_struct_router.get('/subdivisions', response_model=List[str])
+async def get_subdivisions():
+    """Получение всех подразделений"""
+    subdivisions = set()
+    async for document in collection.find({}):
+        clean_document = {key: 'NaN' if isinstance(value, float) and np.isnan(
+            value) else value for key, value in document.items()}
+        if clean_document['subdivision'] != 'NaN':
+            subdivisions.add(clean_document['subdivision'])
+
+    if not subdivisions:
+        raise HTTPException(status_code=404, detail='Документы не найдены')
+
+    return list(subdivisions)
