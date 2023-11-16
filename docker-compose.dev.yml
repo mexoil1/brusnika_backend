@@ -24,7 +24,7 @@ services:
     
   brusnika_backend:
     container_name: brusnika_backend
-    image: mexoil/brusnika
+    image: mexoil/brusnika_backend
     env_file: .env
     ports:
       - 80:8000
