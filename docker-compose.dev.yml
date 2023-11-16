@@ -1,0 +1,32 @@
+version: '1'
+
+volumes:
+  mongo_data:
+  redis_data:
+
+services:
+  brusnika_mongo:
+    container_name: brusnika_mongo
+    image: mongo
+    env_file: .env
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+  brusnika_redis:
+    container_name: brusnika_redis
+    image: redis
+    env_file: .env
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+    
+  brusnika_backend:
+    container_name: brusnika_backend
+    image: mexoil/brusnika
+    env_file: .env
+    ports:
+      - 80:8000
+    depends_on:
+      - brusnika_redis
