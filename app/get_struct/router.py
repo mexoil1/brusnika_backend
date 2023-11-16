@@ -5,7 +5,7 @@ import numpy as np
 import redis
 
 from configs.database import collection
-from .filters import get_new_filters
+from .filters import get_new_filters, get_all_documents
 
 get_struct_router = APIRouter(
     prefix='/structure',
@@ -30,28 +30,35 @@ def set_cached_data(redis_client, cache_key, data, expire_time):
 
 @get_struct_router.get('/get', response_model=dict)
 async def get_struct(redis_client: redis.StrictRedis = Depends(get_redis_client),
-                     ul: Optional[str] = Query(None, title='ЮЛ'),
-                     location: Optional[str] = Query(None, title='Локация'),
-                     subdivision: Optional[str] = Query(
-                         None, title='Подразделение'),
-                     department: Optional[str] = Query(None, title='Отдел'),
-                     group: Optional[str] = Query(None, title='Группа'),
-                     job_title: Optional[str] = Query(None, title='Должность'),
-                     type_of_work: Optional[str] = Query(None, title='Тип работы')):
+                     ul: List[Optional[str]] = Query(
+                         None, description='ЮЛ'),
+                     location: List[Optional[str]] = Query(
+                         None, description='Локация'),
+                     subdivision: List[Optional[str]] = Query(
+                         None, description='Подразделение'),
+                     department: List[Optional[str]] = Query(
+                         None, description='Отдел'),
+                     group: List[Optional[str]] = Query(
+                         None, description='Группа'),
+                     job_title: List[Optional[str]] = Query(
+                         None, description='Должность'),
+                     type_of_work: List[Optional[str]] = Query(
+                         None, description='Тип работы')):
     """Получение всех работников"""
     cache_key = 'get_struct_data'
     cached_data = get_cached_data(redis_client, cache_key)
     # if cached_data:
     #     return cached_data
     filters = {
-        'ul': ul,
-        'location': location,
-        'subdivision': subdivision,
-        'department': department,
-        'group': group,
-        'job_title': job_title,
-        'type_of_work': type_of_work,
+        'ul': {'$in': ul} if ul else None,
+        'location': {"$in": location} if location else None,
+        'subdivision': {'$in': subdivision} if subdivision else None,
+        'department': {'$in': department} if department else None,
+        'group': {'$in': group} if group else None,
+        'job_title': {'$in': job_title} if job_title else None,
+        'type_of_work': {'$in': type_of_work} if type_of_work else None,
     }
+
     filters = {key: value for key,
                value in filters.items() if value is not None}
     # cached_data = get_cached_data(redis_client, cache_key)
@@ -61,6 +68,12 @@ async def get_struct(redis_client: redis.StrictRedis = Depends(get_redis_client)
                           value else None for key, value in document.items()}
         documents.append(clean_document)
     new_filters = await get_new_filters(documents)
+    if len(filters) == 1:
+        all_docs = await get_all_documents(collection)
+        for doc in all_docs:
+            if doc[list(filters.keys())[0]] is not None:
+                new_filters[list(filters.keys())[0]].add(
+                    doc[list(filters.keys())[0]])
 
     if not documents:
         raise HTTPException(status_code=404, detail='Документы не найдены')

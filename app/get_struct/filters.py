@@ -7,3 +7,12 @@ async def get_new_filters(documents: list) -> dict:
             if document[item] is not None:
                 result[item].add(document[item])
     return result
+
+
+async def get_all_documents(collection):
+    documents = []
+    async for document in collection.find(projection={'_id': False}):
+        clean_document = {key: value if value ==
+                          value else None for key, value in document.items()}
+        documents.append(clean_document)
+    return documents
