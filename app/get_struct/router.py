@@ -5,8 +5,8 @@ import numpy as np
 import redis
 
 from configs.database import collection
-from .filters import get_new_filters, get_all_documents
-from .enums import FieldType, PROJ
+from .filters import get_new_filters, get_all_documents, validate_filters, filter_documents_by_search, get_filters_by_one_filter
+from .enums import FieldType, Constants
 
 get_struct_router = APIRouter(
     prefix='/structure',
@@ -30,7 +30,7 @@ def set_cached_data(redis_client, cache_key, data, expire_time):
 
 
 async def get_values_of_field(field: str) -> List[str]:
-    """Получение всех значений поля"""
+    '''Получение всех значений поля'''
     fields = set()
     async for document in collection.find({}):
         clean_document = {key: 'NaN' if isinstance(value, float) and np.isnan(
@@ -55,49 +55,31 @@ async def get_struct(redis_client: redis.StrictRedis = Depends(get_redis_client)
                      job_title: List[Optional[str]] = Query(
                          None, description='Должность'),
                      type_of_work: List[Optional[str]] = Query(
-                         None, description='Тип работы')):
-    """Получение всех работников"""
+                         None, description='Тип работы'),
+                     search: Optional[str] = Query(
+                         None, description='Поле для поиска')):
+    '''Получение всех работников'''
     filters = {
         'ul': {'$in': ul} if ul else None,
-        'location': {"$in": location} if location else None,
+        'location': {'$in': location} if location else None,
         'subdivision': {'$in': subdivision} if subdivision else None,
         'department': {'$in': department} if department else None,
         'group': {'$in': group} if group else None,
         'job_title': {'$in': job_title} if job_title else None,
         'type_of_work': {'$in': type_of_work} if type_of_work else None,
     }
-    filters = {key: value for key,
-               value in filters.items() if value is not None}
-    clean_filters = {}
-    for key, value in filters.items():
-        if 'Не указан' in value['$in']:
-            clean_filters["$and"] = []
-    for key, value in filters.items():
-        if 'Не указан' in value['$in']:
-            clean_filters["$and"].append({
-                "$or": [
-                    {
-                        key: {
-                            "$type": 1,
-                            "$eq": float('nan')
-                        }
-                    },
-                    {key: value}
-                ]
-            })
-        else:
-            clean_filters[key] = value
-    print(1, filters)
-    documents = await get_all_documents(collection, PROJ, clean_filters)
+    clean_filters = await validate_filters(filters)
+    documents = await get_all_documents(Constants.PROJ_FOR_ORDINARY, clean_filters)
+    if search:
+        documents = await filter_documents_by_search(documents, search)
     if not documents:
         raise HTTPException(status_code=404, detail='Документы не найдены')
     new_filters = await get_new_filters(documents)
-    if len(filters) == 1:
-        all_docs = await get_all_documents(collection, PROJ)
-        for doc in all_docs:
-            # if doc[list(filters.keys())[0]] is not None:
-            new_filters[list(filters.keys())[0]].add(
-                doc[list(filters.keys())[0]])
+    if len(clean_filters) == 1:
+        new_filters = await get_filters_by_one_filter(clean_filters, new_filters)
+    for filter in new_filters:
+        new_filters[filter] = sorted(list(new_filters[filter]))
+        
 
     result = {
         'employees': documents,
@@ -108,8 +90,23 @@ async def get_struct(redis_client: redis.StrictRedis = Depends(get_redis_client)
 
 @get_struct_router.get('/field', response_model=List[str])
 async def get_subdivisions(field: FieldType = Query(..., description='Поле, значения которого надо получить')):
-    """Получение всех значений указанного поля"""
+    '''Получение всех значений указанного поля'''
     result = await get_values_of_field(field)
     if result == []:
         raise HTTPException(status_code=404, detail='Документы не найдены')
+    return result
+
+@get_struct_router.get('/search_human', response_model=dict)
+async def search_human(search_field: Optional[str] = Query(..., description='ФИО или номер позиции')):
+    '''Поиск человека по его ФИО или номеру позиции'''
+    condition = {
+            "$or": [
+                {"full_name": {"$regex": search_field, "$options": "i"}},
+                {"number_position": search_field}
+            ]
+        }
+    docs = await get_all_documents(Constants.PROJ_FOR_ORDINARY, condition)
+    if not docs:
+        raise HTTPException(status_code=404, detail="Humans not found")
+    result = docs[0]
     return result
