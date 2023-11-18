@@ -8,5 +8,3 @@ app = FastAPI()
 
 app.include_router(parse_router)
 app.include_router(get_struct_router)
-
-

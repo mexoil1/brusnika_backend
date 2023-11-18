@@ -57,12 +57,14 @@ async def filter_documents_by_search(documents: List[dict], search: str) -> List
     '''Функция для фильтрации документов по поиску'''
     await collection.create_index([('$**', 'text')])
     searched_docs = await collection.find({'$text': {'$search': search}},
-                                   projection=Constants.PROJ_FOR_SEARCH).to_list(length=100)
+                                          projection=Constants.PROJ_FOR_SEARCH).to_list(length=100)
     searched_positions = []
     for item in searched_docs:
         searched_positions.append(item['number_position'])
-    filtered_documents = [doc for doc in documents if doc['number_position'] in searched_positions]
+    filtered_documents = [
+        doc for doc in documents if doc['number_position'] in searched_positions]
     return filtered_documents
+
 
 async def get_filters_by_one_filter(clean_filters: dict, new_filters: dict) -> dict:
     '''Функция для получения фильтров если выбран лишь один'''
