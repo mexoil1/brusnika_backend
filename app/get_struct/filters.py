@@ -1,6 +1,7 @@
 from typing import List
 
 from configs.database import collection
+from utils.repository import AbstractRepository, MongoDBRepository
 from .enums import Constants
 
 
@@ -17,14 +18,14 @@ async def get_new_filters(documents: list) -> dict:
     return result
 
 
-async def get_all_documents(proj: dict, filters: dict = None) -> List[dict]:
-    documents = []
-    print(proj)
-    async for document in collection.find(filters, projection=proj):
+async def get_all_documents(repository: AbstractRepository, proj: dict, filters: dict = None) -> List[dict]:
+    documents = await repository.get_docs(filters, proj)
+    clean_documents = []
+    for document in documents:
         clean_document = {key: value if value ==
                           value else None for key, value in document.items()}
-        documents.append(clean_document)
-    return documents
+        clean_documents.append(clean_document)
+    return clean_documents
 
 
 async def validate_filters(filters: dict) -> dict:
@@ -53,9 +54,9 @@ async def validate_filters(filters: dict) -> dict:
     return clean_filters
 
 
-async def filter_documents_by_search(documents: List[dict], search: str) -> List[dict]:
+async def filter_documents_by_search(repository: AbstractRepository, documents: List[dict], search: str) -> List[dict]:
     '''Функция для фильтрации документов по поиску'''
-    await collection.create_index([('$**', 'text')])
+    await repository.create_index([('$**', 'text')])
     searched_docs = await collection.find({'$text': {'$search': search}},
                                           projection=Constants.PROJ_FOR_SEARCH).to_list(length=100)
     searched_positions = []
@@ -68,7 +69,7 @@ async def filter_documents_by_search(documents: List[dict], search: str) -> List
 
 async def get_filters_by_one_filter(clean_filters: dict, new_filters: dict) -> dict:
     '''Функция для получения фильтров если выбран лишь один'''
-    all_docs = await get_all_documents(Constants.PROJ_FOR_ORDINARY)
+    all_docs = await get_all_documents(MongoDBRepository, Constants.PROJ_FOR_ORDINARY)
     for doc in all_docs:
         if doc[list(clean_filters.keys())[0]] is None:
             doc[list(clean_filters.keys())[0]] = 'not_specified'

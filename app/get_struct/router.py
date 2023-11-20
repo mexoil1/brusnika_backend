@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 import numpy as np
 import redis
 
+from utils.repository import MongoDBRepository
 from configs.database import collection
 from .filters import get_new_filters, get_all_documents, validate_filters, filter_documents_by_search, get_filters_by_one_filter
 from .enums import FieldType, Constants
@@ -69,9 +70,9 @@ async def get_struct(redis_client: redis.StrictRedis = Depends(get_redis_client)
         'type_of_work': {'$in': type_of_work} if type_of_work else None,
     }
     clean_filters = await validate_filters(filters)
-    documents = await get_all_documents(Constants.PROJ_FOR_ORDINARY, clean_filters)
+    documents = await get_all_documents(MongoDBRepository, Constants.PROJ_FOR_ORDINARY, clean_filters)
     if search:
-        documents = await filter_documents_by_search(documents, search)
+        documents = await filter_documents_by_search(MongoDBRepository, documents, search)
     if not documents:
         raise HTTPException(status_code=404, detail='Документы не найдены')
     new_filters = await get_new_filters(documents)
@@ -105,7 +106,7 @@ async def search_human(search_field: Optional[str] = Query(..., description='Ф�
                 {"number_position": search_field}
             ]
         }
-    docs = await get_all_documents(Constants.PROJ_FOR_ORDINARY, condition)
+    docs = await get_all_documents(MongoDBRepository, Constants.PROJ_FOR_ORDINARY, condition)
     if not docs:
         raise HTTPException(status_code=404, detail="Humans not found")
     result = docs[0]
