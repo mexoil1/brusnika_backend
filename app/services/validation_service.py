@@ -6,14 +6,17 @@ from fastapi import HTTPException
 class AbstractValidationService(ABC):
     @abstractmethod
     async def cleaning_filters(self):
+        '''Абстрактный метод очистики фильтров'''
         raise NotImplementedError
 
     @abstractmethod
     async def validate_filters(self):
+        '''Абстрактный метод валидации фильтров'''
         raise NotImplementedError
 
     @abstractmethod
     async def validate_result(self):
+        '''Абстрактный метод валидации результата'''
         raise NotImplementedError
 
 

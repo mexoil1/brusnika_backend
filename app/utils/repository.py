@@ -1,51 +1,70 @@
+import json
+import asyncio
 from abc import ABC, abstractmethod
 from typing import List
+from fastapi import Depends
+from pymongo.collection import Collection
+from redis import StrictRedis
 
-from configs.database import collection
+from configs.database import get_collection, get_redis
 
 
 class AbstractRepository(ABC):
     @abstractmethod
-    async def get_docs():
+    async def get_data():
+        '''Абстрактный метод получения данных'''
         raise NotImplementedError
 
     @abstractmethod
-    async def create_doc():
+    async def create_data():
+        '''Абстрактный метод создания данных'''
         raise NotImplementedError
-    
+
     async def create_index(self):
+        '''Абстрактный метод создания индекса'''
         raise NotImplementedError
 
 
 class MongoDBRepository(AbstractRepository):
     '''Репозиторий работы с MongoDB'''
-    async def get_docs(filters: dict = None, proj: dict = None) -> List[dict]:
-        """Поиск документов"""
+    async def get_data(collection: Collection = Depends(get_collection), filters: dict = None, proj: dict = None) -> List[dict]:
+        """Получение документов"""
         documents = []
         async for document in collection.find(filters, projection=proj):
             documents.append(document)
         return documents
 
-    async def create_doc(data: dict = None) -> None:
+    async def create_data(collection: Collection = Depends(get_collection), data: dict = None) -> None:
         '''Создание одного документа'''
         collection.insert_one(data)
         return None
 
-    async def create_index(indexes: List[tuple]) -> None:
+    async def create_index(collection: Collection = Depends(get_collection), indexes: List[tuple] = None) -> None:
         '''Создание индекса'''
         collection.create_index(indexes)
         return None
 
-# def get_redis_client():
-#     return redis.StrictRedis(host='brusnika_redis', port=6379, db=0, decode_responses=True)
 
+class RedisRepository(AbstractRepository):
 
-# def get_cached_data(redis_client, cache_key):
-#     cached_data = redis_client.get(cache_key)
-#     if cached_data:
-#         return json.loads(cached_data)
-#     return None
+    @staticmethod
+    async def get_data(cache_key: str) -> None | dict | list:
 
+        return await asyncio.to_thread(RedisRepository._get_data_sync, cache_key)
 
-# def set_cached_data(redis_client, cache_key, data, expire_time):
-#     redis_client.setex(cache_key, expire_time, json.dumps(data))
+    @staticmethod
+    def _get_data_sync(cache_key: str, redis_client: StrictRedis = Depends(get_redis),) -> None | dict | list:
+        '''Получение кэша'''
+        cached_data = redis_client.get(cache_key)
+        if cached_data:
+            return json.loads(cached_data)
+        return None
+
+    @staticmethod
+    async def create_data(cache_key: str, data: dict | list, expire_time: int) -> None:
+        await asyncio.to_thread(RedisRepository._create_data_sync, cache_key, data, expire_time)
+
+    @staticmethod
+    def _create_data_sync(cache_key: str, data: dict | list, expire_time: int, redis_client: StrictRedis = Depends(get_redis),) -> None:
+        '''Создание кэша'''
+        redis_client.setex(cache_key, expire_time, data)
