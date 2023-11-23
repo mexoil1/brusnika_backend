@@ -1,5 +1,20 @@
+from abc import ABC, abstractmethod
 from typing import List
 from fastapi import HTTPException
+
+
+class AbstractValidationService(ABC):
+    @abstractmethod
+    async def cleaning_filters(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def validate_filters(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def validate_result(self):
+        raise NotImplementedError
 
 
 class ValidationService:

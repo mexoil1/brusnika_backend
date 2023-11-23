@@ -1,17 +1,34 @@
+from abc import ABC, abstractmethod
+
+from .employees_service import AbstractDocsService
 from utils.repository import AbstractRepository
 
 
+class AbstractFilterService(ABC):
+    @abstractmethod
+    async def get_new_filters(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_filters_by_one_filter(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_filters_by_search(self):
+        raise NotImplementedError
+
+
 class FilterService:
-    
+
     async def get_new_filters(self,
                               repository: AbstractRepository,
-                              employees,
+                              employees: AbstractDocsService,
                               documents: list,
                               clean_filters: dict) -> dict:
         '''Получение фильтров исходя из доступных сотрудников'''
         not_filters = ('_id', 'number_position', 'full_name')
         new_filters = {item: set()
-                for document in documents for item in document if item not in not_filters}
+                       for document in documents for item in document if item not in not_filters}
         for document in documents:
             for item in new_filters:
                 if document[item] is None:
@@ -25,10 +42,10 @@ class FilterService:
         for filter in new_filters:
             new_filters[filter] = sorted(list(new_filters[filter]))
         return new_filters
-    
+
     async def get_filters_by_one_filter(self,
                                         repository: AbstractRepository,
-                                        employees,
+                                        employees: AbstractDocsService,
                                         new_filters: dict,
                                         clean_filters: dict) -> dict:
         '''Функция для получения фильтров если выбран лишь один'''
@@ -39,7 +56,7 @@ class FilterService:
             new_filters[list(clean_filters.keys())[0]].add(
                 doc[list(clean_filters.keys())[0]])
         return new_filters
-    
+
     async def get_filters_by_search(self, search_field: str) -> dict:
         '''Получение фильтра для поиска'''
         condition = {

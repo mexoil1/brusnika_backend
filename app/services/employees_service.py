@@ -1,13 +1,27 @@
+from abc import ABC, abstractmethod
 from typing import List
 import numpy as np
 
 from .validation_service import ValidationService
-
 from .constants import Constants
 from utils.repository import AbstractRepository
 
 
-class EmployeesService:
+class AbstractDocsService(ABC):
+    @abstractmethod
+    async def filter_documents_by_search(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_all_documents(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_values_of_field(self):
+        raise NotImplementedError
+
+
+class EmployeesService(AbstractDocsService):
     async def filter_documents_by_search(self, repository: AbstractRepository,
                                          documents: List[dict], search: str = None) -> List[dict]:
         '''Функция для фильтрации документов по поиску'''
@@ -22,7 +36,7 @@ class EmployeesService:
         return filtered_documents
 
     async def get_all_documents(self, repository: AbstractRepository,
-                                filters: dict = None, search: str =None) -> List[dict]:
+                                filters: dict = None, search: str = None) -> List[dict]:
         '''Возвращает всех найденных сотрудников'''
         documents = await repository.get_docs(filters=filters, proj=Constants.PROJ_FOR_ORDINARY)
         clean_documents = []
