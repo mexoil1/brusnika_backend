@@ -30,6 +30,7 @@ class MongoDBRepository(AbstractRepository):
     async def get_data(collection: Collection = Depends(get_collection), filters: dict = None, proj: dict = None) -> List[dict]:
         """Получение документов"""
         documents = []
+        collection = get_collection()
         async for document in collection.find(filters, projection=proj):
             documents.append(document)
         return documents

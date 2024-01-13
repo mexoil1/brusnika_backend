@@ -42,7 +42,11 @@ async def get_struct(employees: AbstractDocsService = Depends(get_employees_serv
                      type_of_work: List[Optional[str]] = Query(
                          None, description='Тип работы'),
                      search: Optional[str] = Query(
-                         None, description='Поле для поиска')):
+                         None, description='Поле для поиска'),
+                     page: int = Query(
+                         1, description='Страница'),
+                     limit: int = Query(
+                         30, description='Лимит объектов')):
     '''Получение всех работников'''
     clean_filters = await validator.validate_filters(ul=ul,
                                                      location=location,
@@ -59,7 +63,15 @@ async def get_struct(employees: AbstractDocsService = Depends(get_employees_serv
                                                 documents=documents,
                                                 clean_filters=clean_filters)
     result = {
-        'employees': documents,
+        'pagination': {
+            'page': page,
+            'limit': limit
+        },
+        'service_info': {
+            'count_of_objects': len(documents),
+            'count_of_pages': int(len(documents)/limit)+1
+        },
+        'employees': documents[limit*(page-1):limit*(page)],
         'new_filters': new_filters,
     }
     return result
