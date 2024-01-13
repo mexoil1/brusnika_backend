@@ -3,6 +3,8 @@ version: '1'
 volumes:
   mongo_data:
   redis_data:
+  static:
+  media:
 
 services:
   brusnika_mongo:
@@ -10,7 +12,7 @@ services:
     image: mongo
     env_file: .env
     ports:
-      - "27017:27017"
+      - 27017:27017
     volumes:
       - mongo_data:/data/db
   brusnika_redis:
@@ -27,6 +29,8 @@ services:
     env_file: .env
     depends_on:
       - brusnika_redis
+    networks:
+      - brusnika_net
   brusnika_gateway:
     container_name: brusnika_gateway
     image: grigoleg/brusnika_gateway
@@ -37,3 +41,7 @@ services:
     volumes:
       - static:/static
       - media:/media
+    networks:
+      - brusnika_net
+networks:
+  brusnika_net:

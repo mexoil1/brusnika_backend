@@ -76,6 +76,8 @@ class EmployeesService(AbstractDocsService):
     async def create_many_from_dataframe(self, df: DataFrame, repository: AbstractRepository) -> int:
         '''Создание объектов из pandas dataframe'''
         count_of_items = 0
+        data_to_insert: List[dict] = []
+
         for _, row in df.iterrows():
             count_of_items += 1
             data = {
@@ -89,5 +91,7 @@ class EmployeesService(AbstractDocsService):
                 'full_name': row['ФИО'],
                 'type_of_work': row['Тип работы']
             }
-            await repository.create_data(data)
+            data_to_insert.append(data)
+
+        await repository.create_data(data_to_insert)
         return count_of_items

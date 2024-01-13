@@ -3,6 +3,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import List
 from fastapi import Depends
+from motor.motor_asyncio import AsyncIOMotorCollection
 from pymongo.collection import Collection
 from redis import StrictRedis
 
@@ -27,17 +28,22 @@ class AbstractRepository(ABC):
 
 class MongoDBRepository(AbstractRepository):
     '''Репозиторий работы с MongoDB'''
-    async def get_data(collection: Collection = Depends(get_collection), filters: dict = None, proj: dict = None) -> List[dict]:
+    async def get_data(collection: Collection = None, filters: dict = None, proj: dict = None) -> List[dict]:
         """Получение документов"""
         documents = []
-        collection = get_collection()
+        if collection is None:
+            collection = await get_collection()
+        print(collection)
+        print("ПИДАРАС")
         async for document in collection.find(filters, projection=proj):
+            print('хуй')
             documents.append(document)
         return documents
 
-    async def create_data(collection: Collection = Depends(get_collection), data: dict = None) -> None:
+    async def create_data(collection: Collection = Depends(get_collection), data: List[dict] = None) -> None:
         '''Создание одного документа'''
-        collection.insert_one(data)
+        if data:
+            await collection.insert_many(data)
         return None
 
     async def create_index(collection: Collection = Depends(get_collection), indexes: List[tuple] = None) -> None:

@@ -16,6 +16,6 @@ parse_router = APIRouter(
 async def parse_xlsx(employees: AbstractDocsService = Depends(get_employees_service),
                      repository: AbstractRepository = Depends(get_repository),
                      reader: AbstractWorkWithFileService = Depends(get_work_with_file_service)):
-    df = reader.read_file(Settings.FILE_NAME)
+    df = await reader.read_file(Settings.FILE_NAME)
     result = await employees.create_many_from_dataframe(df, repository)
     return {'message': f'Parsed {result} documents'}
