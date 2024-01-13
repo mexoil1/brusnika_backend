@@ -30,6 +30,7 @@ class FilterService:
                               documents: list,
                               clean_filters: dict) -> dict:
         '''Получение фильтров исходя из доступных сотрудников'''
+        # TODO: Переделать алгоритм фильтров и сделать так, чтобы фильтр формировался исходя из всех продуктов возможных по остальным фильтрам
         new_filters = {item: set()
                        for document in documents for item in document if item not in Constants.NOT_FILTERS}
         for document in documents:
@@ -43,7 +44,7 @@ class FilterService:
                                                                new_filters,
                                                                clean_filters)
         for filter in new_filters:
-            new_filters[filter] = sorted(list(new_filters[filter]))
+            new_filters[filter] = sorted(list(new_filters[filter]))                
         return new_filters
 
     async def get_filters_by_one_filter(self,
