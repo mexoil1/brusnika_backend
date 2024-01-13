@@ -1,0 +1,39 @@
+version: '1'
+
+volumes:
+  mongo_data:
+  redis_data:
+
+services:
+  brusnika_mongo:
+    container_name: brusnika_mongo
+    image: mongo
+    env_file: .env
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+  brusnika_redis:
+    container_name: brusnika_redis
+    image: redis
+    env_file: .env
+    ports:
+      - 6379:6379
+    volumes:
+      - redis_data:/data
+  brusnika_backend:
+    container_name: brusnika_backend
+    image: grigoleg/brusnika_backend
+    env_file: .env
+    depends_on:
+      - brusnika_redis
+  brusnika_gateway:
+    container_name: brusnika_gateway
+    image: grigoleg/brusnika_gateway
+    build: ./gateway/
+    env_file: .env
+    ports:
+      - 7000:80
+    volumes:
+      - static:/static
+      - media:/media

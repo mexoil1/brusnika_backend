@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from constants import Constants
+from .constants import Constants
 from .employees_service import AbstractDocsService
 from utils.repository import AbstractRepository
 
